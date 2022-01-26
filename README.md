@@ -1,5 +1,6 @@
 # nano.env
-Goal: Simple functions for reading environment variables with coercion, validation, defaults, and docstrings.
+
+Simple functions for reading environment variables with coercion, validation, defaults, and docstrings.
 
 - Single place to read, coerce, validate, set default values, and document environment variables
 - Unix-y environment variables ≠ Clojure values!
@@ -18,6 +19,13 @@ An environment variable is described by a 'schema' map with the following keys
 :default   ;; Default value if no raw value could be found
 :parse     ;; Funciton to parse the raw value to a value
 :predicate ;; Function to validate the parsed value 
+```
+
+## Installation
+
+Include the following in your `deps.edn` file
+``` clojure
+{io.github.BrianChevalier/nano.env {:git/tag "v1.0.0" :git/sha ""}}
 ```
 
 ## Typical Usage
