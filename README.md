@@ -1,42 +1,71 @@
 # nano.env
-Goal: [Simple](https://www.youtube.com/watch?v=SxdOUGdseq4) collection of functions for reading environment variables, coercing values, setting defaults, and documenting usage.
+Goal: Simple functions for reading environment variables with coercion, validation, defaults, and docstrings.
 
 - Single place to read, coerce, validate, set default values, and document environment variables
 - Unix-y environment variables ≠ Clojure values!
     - A naive coercion strategy can cause unexpected results (i.e. 0 can me true and 1 can mean false, or handling a env var of string `“true”`) 
-    - This coercion strategy is up to you to implement
-- **Static** & **Explicit** declaration of environment variables that are easy to search for in a project
-- Allow rebinding the source of environment variables
-    - Env vars come from `System/getenv` by default
-    - In development, this provides a path to use an `env.edn` file as source of ‘env vars’
-        - Helpful for GUI emacs users & per-project env vars 
-- Easily see exact state of the current environment variables as interpreted by Clojure
-- Helpful error messaging when an environment is mis-configured, before the system is started
-- Env vars are just data and the side-effectfulness is constrained to a single place
+    - The coercion strategy is open 
+- Static & explicit declaration of environment variables that are easy to search for in a project
+- Allow changing the source of environment variables
+    - `System/getenv` is the default 
+- Helpful error messages when values fail checks
+
+An environment variable is described by a 'schema' map with the following keys
 
 ``` clojure
-{:env       :NAME_OF_ENV_VAR
- :doc       "Doc string to explain the var"
- :default   8080
- :->clj     #'->int ;; var to error report name of failure, default is identity
- :predicate #'int?}
+:env       ;; Name of the environment variable
+:doc       ;; A docstring used in erorr messages
+:default   ;; Default value if no raw value could be found
+:parse     ;; Funciton to parse the raw value to a value
+:predicate ;; Function to validate the parsed value 
 ```
 
-An 'environment variable declaration' is a collection of of maps of this shape. Only `:env` and `:predicate` are required
+## Typical Usage
 
-## Extensibility
-Open maps and plain data are *always* extensible. Add any additional data that is helpful to you.Use namespaced keys to avoid collision. Use this data to modify your environment variable pipeline.
-
-If you want to redact secrets, for instance, add a flag to indicate this in each var. 
-- `:secret?` flag to redact vars from logs
+Define a schema of a collection of environment variables and create a map with the environment varibles.
 
 ``` clojure
-(defn env-without-secrets
-  "Redact secret env vars"
-  [declarations]
-  (->> declarations
-       (remove #(= true (:secret? %)))
-       get-env-vars
-       coerce-env-vars
-       validate!))
+(defn ->int [v] (Long/parseLong v))
+
+(def schema 
+  [{:env       :USER
+    :doc       "Current OS user"
+    :predicate #'string?}
+   {:env       :HOME
+    :doc       "Home directory of user"
+    :predicate #'string?}
+   {:env       :PORT
+    :doc       "Port for server" 
+    :predicate #'int?
+    :parse     #'->int}])
+
+(nano.env/env schema)
+=> {:USER "bchevalier", :HOME "/Users/bchevalier", :PORT 123}
+```
+
+Helpful validation error when `:PORT` is not set in the environment
+
+```
+Execution error (ExceptionInfo) at nano.env/validate! (REPL:55).
+One or more `:value` does not conform to `:predicate`
+
+|  :env |            :doc |          :predicate |           :parse | :raw | :value |
+|-------+-----------------+---------------------+------------------+------+--------|
+| :PORT | Port for server | #'clojure.core/int? | #'nano.env/->int |      |        |
+```
+
+## Sourcing Beyond the Environment
+You can pass a custom function to look up an value instead of reading from the system environment. Here, values are read from an `EDN` file instead.
+
+``` clojure
+(defn from-file
+  "Return function that reads env vars from file on the classpath instead of from environment"
+  [filename]
+  (let [m (-> filename
+              io/resource
+              slurp
+              edn/read-string)]
+    (fn [env] (get m env))))
+
+(nano.env/env schema (from-file "env.edn"))
 ```
