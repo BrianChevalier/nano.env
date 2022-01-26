@@ -25,7 +25,7 @@ An environment variable is described by a 'schema' map with the following keys
 
 Include the following in your `deps.edn` file
 ``` clojure
-{io.github.BrianChevalier/nano.env {:git/tag "v1.0.0" :git/sha ""}}
+{io.github.BrianChevalier/nano.env {:git/tag "v1.0.0" :git/sha "a2cb4f2"}}
 ```
 
 ## Typical Usage
